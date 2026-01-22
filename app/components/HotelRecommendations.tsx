@@ -10,13 +10,21 @@ interface HotelRecommendationsProps {
 }
 
 // Pexels API helper (reusing logic from ItineraryDisplay)
+// Pexels API helper (reusing logic from ItineraryDisplay)
 async function fetchPexelsImage(query: string): Promise<string | null> {
     try {
+        const apiKey = process.env.NEXT_PUBLIC_PEXELS_API_KEY;
+
+        // Use fallback if key is missing or invalid
+        if (!apiKey || apiKey === 'YOUR_PEXELS_KEY_HERE') {
+            return `https://loremflickr.com/800/600/${encodeURIComponent(query)},hotel/all`;
+        }
+
         const response = await fetch(
             `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=1&orientation=landscape`,
             {
                 headers: {
-                    Authorization: 'gwM23U8HfIAdG4itv2eCNnC0RmuB9JB3Tn5KMXWiP4QqVT8WZQcSQhHN',
+                    Authorization: apiKey,
                 },
             }
         );

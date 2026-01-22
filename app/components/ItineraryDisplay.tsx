@@ -58,9 +58,18 @@ interface ItineraryDisplayProps {
 
 // Pexels API helper
 const fetchPexelsImage = async (query: string): Promise<string | null> => {
+  // Helper for fallback URL
+  const getFallbackUrl = (q: string) =>
+    `https://loremflickr.com/800/600/${encodeURIComponent(q.split(' ')[0])},travel/all`;
+
   try {
     const apiKey = process.env.NEXT_PUBLIC_PEXELS_API_KEY;
-    if (!apiKey) return null;
+
+    // If Key is strictly "YOUR_PEXELS_KEY_HERE" or missing, use fallback
+    if (!apiKey || apiKey === 'YOUR_PEXELS_KEY_HERE') {
+      console.warn('Pexels API Key missing, using fallback.');
+      return getFallbackUrl(query);
+    }
 
     const response = await fetch(
       `https://api.pexels.com/v1/search?query=${encodeURIComponent(query + ' landmark travel')}&per_page=1`,
@@ -71,16 +80,20 @@ const fetchPexelsImage = async (query: string): Promise<string | null> => {
       }
     );
 
-    if (!response.ok) return null;
+    if (!response.ok) {
+      console.warn('Pexels API failed:', response.status, response.statusText);
+      return getFallbackUrl(query);
+    }
 
     const data = await response.json();
     if (data.photos && data.photos.length > 0) {
       return data.photos[0].src.large;
     }
-    return null;
+
+    return getFallbackUrl(query);
   } catch (error) {
     console.error('Error fetching Pexels image:', error);
-    return null;
+    return getFallbackUrl(query);
   }
 };
 
