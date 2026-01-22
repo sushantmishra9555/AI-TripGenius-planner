@@ -92,6 +92,7 @@ RULES:
 - Avoid unrealistic rushing
 - **CRITICAL**: Provide REAL GPS coordinates for ALL places. Do NOT return 0,0. verify coordinates.
 - Optimize order by distance (nearest places first)
+- Include local practical tips: Currency usage (UPI/Cash), Tipping customs, Best local transport, and specific Safety advice.
 ${smartRules}
 
 ROLE:
@@ -110,6 +111,17 @@ OUTPUT FORMAT (STRICT JSON):
   "hotel_coordinates": {
     "lat": 28.6139,
     "lon": 77.2090  
+  },
+  "weather": {
+    "temp": "25°C - 30°C",
+    "rain_chance": "Low (10%)",
+    "climate": "Sunny & Pleasant"
+  },
+  "practical_tips": {
+    "currency_tips": "Cash preferred at markets; UPI widely accepted.",
+    "tipping": "10% at restaurants is standard.",
+    "transport": "Use Metro for long distances; Auto-rickshaws for short trips.",
+    "safety": "Avoid isolated areas at night; Dress modestly at temples."
   },
   "hotels": [
     {

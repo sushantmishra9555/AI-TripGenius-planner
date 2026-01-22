@@ -97,6 +97,23 @@ export interface Hotel {
   address?: string;
 }
 
+export interface WeatherSnapshot {
+  temp: string;
+  rain_chance: string;
+  climate: string;
+}
+
+export interface PracticalTips {
+  currency_tips: string;
+  tipping: string;
+  transport: string;
+  safety: string;
+}
+
+export interface LocalHighlight {
+  title: string;
+  description: string;
+}
 
 export interface ItineraryResponse {
   seasonal_warning?: {
@@ -104,6 +121,9 @@ export interface ItineraryResponse {
     description: string;
     severity: 'high' | 'moderate' | 'info' | 'none';
   };
+  weather?: WeatherSnapshot;
+  local_highlight?: LocalHighlight;
+  practical_tips?: PracticalTips;
   hotels: Hotel[];
   // Loose typing for the dynamic object structure (day_1, day_2, etc)
   [key: string]: any;

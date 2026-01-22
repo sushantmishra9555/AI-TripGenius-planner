@@ -53,6 +53,7 @@ RULES:
 - Avoid unrealistic rushing
 - **CRITICAL**: Provide REAL GPS coordinates for ALL places. Do NOT return 0,0. verify coordinates.
 - Optimize order by distance (nearest places first)
+- Include local practical tips: Currency usage (UPI/Cash), Tipping customs, Best local transport, and specific Safety advice.
 ${smartRules}
 
 ROLE:
@@ -60,6 +61,7 @@ You are a local guide who knows the best times to visit.
 - Check if ${month} is a MONSOON month for ${destination}. If yes, WARN about rain.
 - Check if ${month} is PEAK season (crowds).
 - Check if any MAJOR FESTIVALS happen in ${month} in ${destination} (e.g. Diwali, Christmas, Cherry Blossoms).
+- Identify ONE special "Local Hint" or "Cultural Highlight" for this trip (e.g. "It's Cherry Blossom Season 🌸" or "Great time for beach parties 🎉").
 
 OUTPUT FORMAT (STRICT JSON):
 {
@@ -71,6 +73,21 @@ OUTPUT FORMAT (STRICT JSON):
   "hotel_coordinates": {
     "lat": 28.6139,
     "lon": 77.2090  
+  },
+  "weather": {
+    "temp": "25°C - 30°C",
+    "rain_chance": "Low (10%)",
+    "climate": "Sunny & Pleasant"
+  },
+  "local_highlight": {
+    "title": "Cherry Blossom Season 🌸",
+    "description": "The city is painted pink! Perfect for Hanami picnics at parks." 
+  },
+  "practical_tips": {
+    "currency_tips": "Cash preferred at markets; UPI widely accepted.",
+    "tipping": "10% at restaurants is standard.",
+    "transport": "Use Metro for long distances; Auto-rickshaws for short trips.",
+    "safety": "Avoid isolated areas at night; Dress modestly at temples."
   },
   "hotels": [
     {

@@ -1,11 +1,13 @@
 'use client';
 
-import { MapPin, Utensils, Clock, Route, Lightbulb, Calendar, ArrowRight, Navigation, Download, Share2, Heart } from 'lucide-react';
+import { MapPin, Utensils, Clock, Route, Lightbulb, Calendar, ArrowRight, Navigation, Download, Share2, Heart, CloudSun, Thermometer, CloudRain, Wallet, Banknote, Bus, Shield, Info } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { formatDistance, formatTravelTime, calculateDistance } from '../utils/distance';
 import RouteMap from './RouteMap';
 import HotelRecommendations from './HotelRecommendations';
-import type { Hotel } from '../types/trip';
+import type { Hotel, WeatherSnapshot, PracticalTips, LocalHighlight } from '../types/trip';
+import BudgetBreakdown from './BudgetBreakdown';
+import TravelPace from './TravelPace';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
@@ -37,12 +39,15 @@ interface SeasonalWarning {
 
 interface ItineraryData {
   seasonal_warning?: SeasonalWarning;
+  weather?: WeatherSnapshot;
+  local_highlight?: LocalHighlight;
+  practical_tips?: PracticalTips;
   hotel_coordinates?: {
     lat: number;
     lon: number;
   };
   hotels?: Hotel[];
-  [key: string]: DayItinerary | SeasonalWarning | { lat: number; lon: number } | Hotel[] | undefined;
+  [key: string]: DayItinerary | SeasonalWarning | { lat: number; lon: number } | Hotel[] | WeatherSnapshot | PracticalTips | LocalHighlight | undefined;
 }
 
 interface ItineraryDisplayProps {
@@ -210,6 +215,40 @@ const PlaceCard = ({
   );
 };
 
+// Weather Snapshot Component
+const WeatherInfo = ({ weather }: { weather: WeatherSnapshot }) => (
+  <div className="mb-8 p-6 bg-gradient-to-r from-sky-400 to-blue-500 rounded-2xl shadow-lg text-white border border-white/20">
+    <div className="flex flex-col md:flex-row items-center justify-around gap-6 text-center md:text-left">
+      <div className="flex items-center gap-4">
+        <div className="bg-white/20 p-4 rounded-full backdrop-blur-sm shadow-inner">
+          <CloudSun className="w-8 h-8 text-yellow-300" />
+        </div>
+        <div>
+          <h3 className="text-2xl font-bold">Weather Snapshot</h3>
+          <p className="text-blue-100 font-medium text-lg">{weather.climate}</p>
+        </div>
+      </div>
+
+      <div className="h-12 w-px bg-white/20 hidden md:block"></div>
+
+      <div className="flex gap-8 md:gap-12">
+        <div className="flex flex-col items-center md:items-start gap-1">
+          <div className="flex items-center gap-1 text-blue-100 uppercase text-xs font-bold tracking-wider">
+            <Thermometer className="w-4 h-4" /> Temp Range
+          </div>
+          <p className="font-bold text-2xl">{weather.temp}</p>
+        </div>
+        <div className="flex flex-col items-center md:items-start gap-1">
+          <div className="flex items-center gap-1 text-blue-100 uppercase text-xs font-bold tracking-wider">
+            <CloudRain className="w-4 h-4" /> Rain Chance
+          </div>
+          <p className="font-bold text-2xl">{weather.rain_chance}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
 export default function ItineraryDisplay({ jsonData, onReset, tripParams }: ItineraryDisplayProps) {
   const itineraryRef = useRef<HTMLDivElement>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
@@ -219,11 +258,9 @@ export default function ItineraryDisplay({ jsonData, onReset, tripParams }: Itin
   let itinerary: ItineraryData;
 
   try {
-    // Try to parse the JSON
     const cleaned = jsonData.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     itinerary = JSON.parse(cleaned);
   } catch (error) {
-    // If parsing fails, show the raw text
     return (
       <div className="max-w-4xl mx-auto">
         <div className="bg-white/90 backdrop-blur-xl rounded-xl shadow-lg p-8 border border-white/40">
@@ -246,18 +283,16 @@ export default function ItineraryDisplay({ jsonData, onReset, tripParams }: Itin
     );
   }
 
-  // PDF Download Handler
   const handleDownloadPDF = async () => {
     if (!itineraryRef.current) return;
     setIsGeneratingPdf(true);
 
     try {
       const canvas = await html2canvas(itineraryRef.current, {
-        // @ts-ignore
         scale: 2,
         useCORS: true,
         logging: false,
-      });
+      } as any);
 
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', 'a4');
@@ -276,14 +311,10 @@ export default function ItineraryDisplay({ jsonData, onReset, tripParams }: Itin
     }
   };
 
-  // Share Link Handler
   const handleShare = () => {
     if (!tripParams) return;
-
-    // Construct query params
     const params = new URLSearchParams();
     Object.entries(tripParams).forEach(([key, value]) => {
-      // @ts-ignore
       if (value) params.append(key, String(value));
     });
 
@@ -292,7 +323,6 @@ export default function ItineraryDisplay({ jsonData, onReset, tripParams }: Itin
     showNotification('Link copied to clipboard! 🔗');
   };
 
-  // Save Trip Handler
   const handleSaveTrip = () => {
     if (!tripParams || !jsonData) return;
 
@@ -305,7 +335,6 @@ export default function ItineraryDisplay({ jsonData, onReset, tripParams }: Itin
       destination: tripParams.destination
     };
 
-    // Add to beginning, limit to 10
     const updatedTrips = [newTrip, ...savedTrips].slice(0, 10);
     localStorage.setItem('savedTrips', JSON.stringify(updatedTrips));
     showNotification('Trip saved to "My Trips"! 💾');
@@ -317,7 +346,6 @@ export default function ItineraryDisplay({ jsonData, onReset, tripParams }: Itin
     setTimeout(() => setShowToast(false), 3000);
   };
 
-  // Determine warning styles
   const getWarningStyle = (severity: string) => {
     switch (severity) {
       case 'high': return 'bg-red-50 border-red-200 text-red-800';
@@ -347,7 +375,6 @@ export default function ItineraryDisplay({ jsonData, onReset, tripParams }: Itin
           </div>
 
           <div className="flex gap-3">
-            {/* Action Buttons */}
             <button
               onClick={handleDownloadPDF}
               disabled={isGeneratingPdf}
@@ -397,6 +424,51 @@ export default function ItineraryDisplay({ jsonData, onReset, tripParams }: Itin
         </div>
       )}
 
+      {/* Cultural Highlight / Festival Hint */}
+      {itinerary.local_highlight && (
+        <div className="mb-8 p-1 rounded-2xl bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 shadow-xl">
+          <div className="bg-white/95 backdrop-blur-sm rounded-xl p-6 flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
+            <div className="text-5xl animate-bounce-slow">
+              {itinerary.local_highlight.title.includes('🌸') ? '🍱' : '🎉'}
+            </div>
+            <div className="flex-1">
+              <h3 className="text-2xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent mb-2">
+                {itinerary.local_highlight.title}
+              </h3>
+              <p className="text-gray-700 font-medium text-lg leading-relaxed">
+                {itinerary.local_highlight.description}
+              </p>
+            </div>
+            <div className="hidden md:block">
+              <span className="inline-block px-4 py-2 bg-purple-100 text-purple-700 font-bold rounded-full text-sm">
+                Happening Now ✨
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Info Grid: Weather & Pace */}
+      <div className="grid md:grid-cols-2 gap-6 mb-8">
+        {itinerary.weather && <WeatherInfo weather={itinerary.weather} />}
+
+        <TravelPace
+          totalPlaces={Object.values(itinerary)
+            .filter((day: any) => day?.places)
+            .reduce((acc: number, day: any) => acc + (day.places?.length || 0), 0) as number}
+          days={Object.keys(itinerary).filter(k => k.startsWith('day_')).length}
+        />
+      </div>
+
+      {/* Budget Breakdown */}
+      {tripParams && (
+        <BudgetBreakdown
+          travelStyle={tripParams.travel_style}
+          totalBudget={tripParams.budget}
+          currency={tripParams.currency}
+        />
+      )}
+
       {/* Map View */}
       <div className="mb-8">
         <RouteMap
@@ -422,16 +494,75 @@ export default function ItineraryDisplay({ jsonData, onReset, tripParams }: Itin
         />
       )}
 
+      {/* Practical Tips - Good to Know */}
+      {itinerary.practical_tips && (
+        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-3 bg-teal-100 rounded-xl">
+              <Info className="w-6 h-6 text-teal-600" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-800">Good to Know</h2>
+          </div>
 
-      {/* Day Cards - Zomato/MakeMyTrip Style */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white p-5 rounded-xl border-2 border-teal-50 shadow-sm hover:shadow-md transition">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2 bg-teal-100 text-teal-600 rounded-lg">
+                  <Banknote className="w-5 h-5" />
+                </div>
+                <h4 className="font-bold text-gray-800">Currency</h4>
+              </div>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                {itinerary.practical_tips.currency_tips}
+              </p>
+            </div>
+
+            <div className="bg-white p-5 rounded-xl border-2 border-teal-50 shadow-sm hover:shadow-md transition">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2 bg-teal-100 text-teal-600 rounded-lg">
+                  <Wallet className="w-5 h-5" />
+                </div>
+                <h4 className="font-bold text-gray-800">Tipping</h4>
+              </div>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                {itinerary.practical_tips.tipping}
+              </p>
+            </div>
+
+            <div className="bg-white p-5 rounded-xl border-2 border-teal-50 shadow-sm hover:shadow-md transition">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2 bg-teal-100 text-teal-600 rounded-lg">
+                  <Bus className="w-5 h-5" />
+                </div>
+                <h4 className="font-bold text-gray-800">Transport</h4>
+              </div>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                {itinerary.practical_tips.transport}
+              </p>
+            </div>
+
+            <div className="bg-white p-5 rounded-xl border-2 border-teal-50 shadow-sm hover:shadow-md transition">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2 bg-teal-100 text-teal-600 rounded-lg">
+                  <Shield className="w-5 h-5" />
+                </div>
+                <h4 className="font-bold text-gray-800">Safety</h4>
+              </div>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                {itinerary.practical_tips.safety}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Day Cards */}
       <div className="space-y-6">
         {Object.entries(itinerary)
           .filter(([key]) => key.startsWith('day_'))
           .map(([day, info], index) => {
             const dayNumber = day.replace('day_', '');
             const dayInfo = info as DayItinerary;
-
-            // Extract hotel coordinates
             const hotelCoords = itinerary.hotel_coordinates;
 
             return (
@@ -439,7 +570,6 @@ export default function ItineraryDisplay({ jsonData, onReset, tripParams }: Itin
                 key={day}
                 className="bg-white/90 backdrop-blur-md rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-white/40"
               >
-                {/* Day Header - MakeMyTrip Style */}
                 <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-6">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -465,7 +595,6 @@ export default function ItineraryDisplay({ jsonData, onReset, tripParams }: Itin
                 </div>
 
                 <div className="p-6">
-                  {/* Places Section - Zomato Card Style with Images */}
                   {dayInfo.places && dayInfo.places.length > 0 && (
                     <div className="mb-6">
                       <div className="flex items-center gap-2 mb-4">
@@ -491,7 +620,6 @@ export default function ItineraryDisplay({ jsonData, onReset, tripParams }: Itin
                     </div>
                   )}
 
-                  {/* Food Section - Zomato Style */}
                   {dayInfo.food && dayInfo.food.length > 0 && (
                     <div className="mb-6">
                       <div className="flex items-center gap-2 mb-4">
@@ -527,7 +655,6 @@ export default function ItineraryDisplay({ jsonData, onReset, tripParams }: Itin
                     </div>
                   )}
 
-                  {/* Notes Section */}
                   {dayInfo.notes && (
                     <div className="bg-gradient-to-r from-yellow-50 to-amber-50 border-2 border-yellow-200 rounded-xl p-5">
                       <div className="flex items-start gap-3">
@@ -546,7 +673,6 @@ export default function ItineraryDisplay({ jsonData, onReset, tripParams }: Itin
                     </div>
                   )}
 
-                  {/* Route Indicator */}
                   {index < Object.keys(itinerary).filter(k => k.startsWith('day_')).length - 1 && (
                     <div className="flex justify-center mt-6">
                       <div className="bg-gray-100 px-6 py-2 rounded-full flex items-center gap-2 text-gray-600">
