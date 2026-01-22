@@ -18,7 +18,8 @@ export type PlaceCategory =
 
 export type DietaryType = 'veg' | 'non-veg' | 'both' | 'vegan';
 
-export type DietaryPreference = 'vegetarian' | 'non-vegetarian' | 'no-preference';
+export type DietaryPreference = 'vegetarian' | 'non-vegetarian' | 'no-preference' | 'vegan' | 'halal';
+
 
 export interface Place {
   id: string;
@@ -84,4 +85,26 @@ export interface TripFormData {
   starting_location: string;
   dietary_preference?: DietaryPreference;
   month?: string;
+}
+
+export interface Hotel {
+  name: string;
+  description: string;
+  price_range: string;
+  rating: number;
+  amenities: string[];
+  distance_from_center?: string;
+  address?: string;
+}
+
+
+export interface ItineraryResponse {
+  seasonal_warning?: {
+    title: string | null;
+    description: string;
+    severity: 'high' | 'moderate' | 'info' | 'none';
+  };
+  hotels: Hotel[];
+  // Loose typing for the dynamic object structure (day_1, day_2, etc)
+  [key: string]: any;
 }

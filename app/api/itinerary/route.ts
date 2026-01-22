@@ -11,11 +11,7 @@ function generatePrompt(
     budget: number,
     style: string,
     hotel: string,
-    constraints?: {
-        budgetLevel: string;
-        distanceLimit: boolean;
-        walkingIntensity: string;
-    },
+    constraints?: any,
     month?: string
 ): string {
     // Build smart constraints text
@@ -55,7 +51,7 @@ RULES:
 - Include travel time estimates
 - Make it practical for Indian travelers
 - Avoid unrealistic rushing
-- IMPORTANT: Include GPS coordinates (lat, lon) for each place (REQUIRED for map)
+- **CRITICAL**: Provide REAL GPS coordinates for ALL places. Do NOT return 0,0. verify coordinates.
 - Optimize order by distance (nearest places first)
 ${smartRules}
 
@@ -76,14 +72,24 @@ OUTPUT FORMAT (STRICT JSON):
     "lat": 28.6139,
     "lon": 77.2090  
   },
+  "hotels": [
+    {
+      "name": "Hotel Name",
+      "description": "Brief description",
+      "price_range": "Range",
+      "rating": 4.5,
+      "amenities": ["WiFi"],
+      "distance_from_center": "Distance"
+    }
+  ],
   "day_1": {
     "places": [
       {
-        "name": "Place Name",
+        "name": "Gateway of India",
         "description": "Description",
         "entry_fee": "Free or ₹amount",
-        "lat": 28.6139,
-        "lon": 77.2090
+        "lat": 18.9220,
+        "lon": 72.8347
       }
     ],
     "food": [
@@ -96,6 +102,8 @@ OUTPUT FORMAT (STRICT JSON):
     "notes": "Tips and suggestions"
   }
 }
+
+IMPORTANT: Include 3-5 hotel recommendations based on the budget level.
 `;
 }
 
@@ -107,24 +115,14 @@ export async function POST(req: Request) {
         // Validate required fields
         if (!destination || !days || !budget || !style || !hotel) {
             return NextResponse.json(
-                { error: 'Missing required fields: destination, days, budget, style, hotel' },
+                { error: 'Missing required fields' },
                 { status: 400 }
             );
         }
 
-        // Validate days is a positive number
-        if (typeof days !== 'number' || days <= 0 || days > 30) {
-            return NextResponse.json(
-                { error: 'Days must be a number between 1 and 30' },
-                { status: 400 }
-            );
-        }
-
-        // Validate OpenAI API key
         if (!process.env.OPENAI_API_KEY) {
-            console.error('OPENAI_API_KEY is not configured');
             return NextResponse.json(
-                { error: 'OpenAI API key not configured. Please set OPENAI_API_KEY in environment variables.' },
+                { error: 'OpenAI API key missing' },
                 { status: 500 }
             );
         }
@@ -135,32 +133,18 @@ export async function POST(req: Request) {
             model: 'gpt-4o-mini',
             messages: [{ role: 'user', content: prompt }],
             temperature: 0.7,
+            response_format: { type: "json_object" }
         });
 
+        // Return the JSON directly (frontend parses it)
         return NextResponse.json({
             itinerary: response.choices[0].message.content,
         });
+
     } catch (error) {
-        console.error('OpenAI API Error:', error);
-
-        // Handle specific OpenAI errors
-        if (error instanceof Error) {
-            if (error.message.includes('API key')) {
-                return NextResponse.json(
-                    { error: 'Invalid OpenAI API key' },
-                    { status: 401 }
-                );
-            }
-            if (error.message.includes('quota')) {
-                return NextResponse.json(
-                    { error: 'OpenAI API quota exceeded' },
-                    { status: 429 }
-                );
-            }
-        }
-
+        console.error('API Error:', error);
         return NextResponse.json(
-            { error: 'Failed to generate itinerary. Please try again.' },
+            { error: 'Failed to generate itinerary' },
             { status: 500 }
         );
     }

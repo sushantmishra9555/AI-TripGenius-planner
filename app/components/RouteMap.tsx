@@ -63,6 +63,14 @@ export default function RouteMap({ places, startLat, startLon, startName = "Hote
     const [routeInfos, setRouteInfos] = useState<Array<{ day: number; distance: string; duration: string; color: string }>>([]);
 
     useEffect(() => {
+        // Handle Google Maps Auth Failure
+        // @ts-ignore
+        window.gm_authFailure = () => {
+            console.error('Google Maps Authentication Failed');
+            setError('Google Maps API Key Error (Check Billing/Restrictions)');
+            setLoading(false);
+        };
+
         const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
         if (!apiKey) {

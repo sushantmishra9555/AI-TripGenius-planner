@@ -1,118 +1,104 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import TripForm from './components/TripForm';
+import { useState } from 'react';
+import TravelForm from './components/TravelForm';
+import TripPreview from './components/TripPreview';
 import ItineraryDisplay from './components/ItineraryDisplay';
 import type { TripFormData } from './types/trip';
-import { Plane, Moon, Sun } from 'lucide-react';
+import { Plane, Globe, Sparkles, Star, Shield, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+
+interface FormData {
+    destination: string;
+    month: string;
+    days: string;
+    currency: string;
+    budget: string;
+    travelType: string;
+    foodPreference: string;
+    startingPoint: string;
+}
 
 export default function Home() {
     const [isLoading, setIsLoading] = useState(false);
     const [itinerary, setItinerary] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [tripParams, setTripParams] = useState<TripFormData | null>(null);
-    const [initialFormData, setInitialFormData] = useState<Partial<TripFormData> | undefined>(undefined);
-    const [darkMode, setDarkMode] = useState(false);
 
-    // Initial Theme Check
-    useEffect(() => {
-        if (typeof window !== 'undefined') {
-            const isDark = localStorage.getItem('theme') === 'dark' ||
-                (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
-            setDarkMode(isDark);
-            if (isDark) document.documentElement.classList.add('dark');
-        }
-    }, []);
 
-    const toggleTheme = () => {
-        const newMode = !darkMode;
-        setDarkMode(newMode);
-        localStorage.setItem('theme', newMode ? 'dark' : 'light');
-        if (newMode) {
-            document.documentElement.classList.add('dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-        }
+    const [formData, setFormData] = useState<FormData>({
+        destination: '',
+        month: 'January',
+        days: '3',
+        currency: 'USD',
+        budget: '1000',
+        travelType: 'solo',
+        foodPreference: 'anything',
+        startingPoint: '',
+    });
+
+    const handleFormChange = (data: FormData) => {
+        setFormData(data);
     };
 
-    // Handle shared links
-    useEffect(() => {
-        if (typeof window !== 'undefined') {
-            const params = new URLSearchParams(window.location.search);
-            const destination = params.get('destination');
-
-            if (destination) {
-                const sharedData: Partial<TripFormData> = {
-                    destination,
-                    days: Number(params.get('days')) || 3,
-                    budget: Number(params.get('budget')) || 1000,
-                    // @ts-ignore
-                    currency: params.get('currency') || 'USD',
-                    // @ts-ignore
-                    travel_style: params.get('travel_style') || 'Solo',
-                    starting_location: params.get('starting_location') || '',
-                    // @ts-ignore
-                    dietary_preference: params.get('dietary_preference') || 'no-preference',
-                    month: params.get('month') || 'January',
-                };
-                setInitialFormData(sharedData);
-            }
-        }
-    }, []);
-
-    const handleSubmit = async (formData: TripFormData) => {
+    const handleSubmit = async (data: FormData) => {
         setIsLoading(true);
         setError(null);
         setItinerary(null);
-        setTripParams(formData);
+
+        // Convert form data to API format
+        const tripData: TripFormData = {
+            destination: data.destination,
+            days: parseInt(data.days),
+            budget: parseFloat(data.budget),
+            currency: data.currency,
+            travel_style: data.travelType.charAt(0).toUpperCase() + data.travelType.slice(1) as 'Solo' | 'Family' | 'Backpacker',
+            starting_location: data.startingPoint,
+            dietary_preference: data.foodPreference === 'non-veg' ? 'non-vegetarian' : data.foodPreference as 'no-preference' | 'vegetarian' | 'vegan' | 'halal',
+            month: data.month,
+        };
+
+        setTripParams(tripData);
 
         try {
-            // 🧠 SMART LOGIC - Optimize parameters before calling AI
+            // Smart Logic - Optimize parameters before calling AI
             let constraints = {
                 budgetLevel: 'normal',
                 distanceLimit: false,
                 walkingIntensity: 'normal'
             };
 
-            // Budget-based adjustments
-            if (formData.budget < 15000) {
+            if (tripData.budget < 15000) {
                 constraints.budgetLevel = 'budget';
-                console.log('💰 Budget mode activated: Prioritizing free/low-cost activities');
-            } else if (formData.budget > 50000) {
+                console.log('💰 Budget mode activated');
+            } else if (tripData.budget > 50000) {
                 constraints.budgetLevel = 'premium';
-                console.log('💎 Premium mode activated: Including luxury options');
+                console.log('💎 Premium mode activated');
             }
 
-            // Days-based adjustments
-            if (formData.days <= 2) {
+            if (tripData.days <= 2) {
                 constraints.distanceLimit = true;
-                console.log('⏱️ Short trip detected: Limiting to nearby locations');
+                console.log('⏱️ Short trip detected');
             }
 
-            // Travel style adjustments
-            if (formData.travel_style === 'Family') {
+            if (tripData.travel_style === 'Family') {
                 constraints.walkingIntensity = 'low';
-                console.log('👨‍👩‍👧‍👦 Family mode: Reducing walking, adding kid-friendly spots');
-            } else if (formData.travel_style === 'Backpacker') {
-                constraints.walkingIntensity = 'high';
-                console.log('🎒 Backpacker mode: Adding adventurous activities');
+                console.log('👨‍👩‍👧‍👦 Family mode');
             }
 
-            // Call the API route to generate itinerary using OpenAI
             const response = await fetch('/api/itinerary', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    destination: formData.destination,
-                    days: formData.days,
-                    budget: formData.budget,
-                    style: formData.travel_style,
-                    hotel: formData.starting_location,
-                    month: formData.month,
-                    constraints: constraints, // Send smart constraints to API
+                    destination: tripData.destination,
+                    days: tripData.days,
+                    budget: tripData.budget,
+                    style: tripData.travel_style,
+                    hotel: tripData.starting_location,
+                    month: tripData.month,
+                    constraints: constraints,
                 }),
             });
 
@@ -121,34 +107,26 @@ export default function Home() {
                 throw new Error(errorData.error || 'Failed to generate itinerary');
             }
 
-            const data = await response.json();
+            const responseData = await response.json();
 
-            // Parse the AI response - it might be wrapped in code blocks
             let parsedItinerary: string;
-
             try {
-                // Remove markdown code blocks if present
-                const cleaned = data.itinerary
+                const cleaned = responseData.itinerary
                     .replace(/```json\n?/g, '')
                     .replace(/```\n?/g, '')
                     .trim();
 
-                // Try to parse as JSON to validate it
                 const jsonData = JSON.parse(cleaned);
-
-                // Validate it has day data
                 const hasValidDays = Object.keys(jsonData).some(key => key.startsWith('day_'));
 
                 if (!hasValidDays) {
-                    throw new Error('Invalid itinerary format - no day data found');
+                    throw new Error('Invalid itinerary format');
                 }
 
-                // Store the cleaned JSON string
                 parsedItinerary = cleaned;
             } catch (parseError) {
-                console.warn('Could not parse as JSON, using raw response:', parseError);
-                // If parsing fails, use the original response
-                parsedItinerary = data.itinerary;
+                console.warn('Could not parse as JSON:', parseError);
+                parsedItinerary = responseData.itinerary;
             }
 
             setItinerary(parsedItinerary);
@@ -164,36 +142,23 @@ export default function Home() {
         setItinerary(null);
         setError(null);
         setTripParams(null);
-        // Clear URL params
         window.history.replaceState({}, '', window.location.pathname);
     };
 
     return (
-        <div className="min-h-screen relative overflow-hidden font-sans bg-slate-50">
-            {/* Minimal World Map Background using a subtle pattern/gradient for now */}
-            <div className="fixed inset-0 z-0 opacity-10 pointer-events-none"
-                style={{
-                    backgroundImage: 'url("https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/World_Map_Blank.svg/2560px-World_Map_Blank.svg.png")',
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                    filter: 'grayscale(100%) contrast(100%) brightness(100%)'
-                }}
-            />
+        <div className="min-h-screen travel-gradient-bg world-map-overlay relative overflow-hidden">
+            {/* Decorative Elements */}
+            <div className="absolute top-20 left-10 w-72 h-72 bg-primary/5 rounded-full blur-3xl" />
+            <div className="absolute bottom-20 right-10 w-96 h-96 bg-accent/5 rounded-full blur-3xl" />
 
-            {/* Top Logo Section */}
-            <div className="relative z-10 pt-12 pb-6 text-center">
-                <div className="flex items-center justify-center gap-2 mb-4">
-                    <div className="bg-blue-600 text-white p-2 rounded-lg">
-                        <span className="font-bold text-xl">AI</span>
-                    </div>
-                    <span className="text-2xl font-bold text-gray-800 tracking-tight">TripGenius AI</span>
-                </div>
-                <p className="text-gray-500 max-w-2xl mx-auto px-4">
-                    Experience the future of travel planning. Personalized itineraries, budget<br className="hidden md:block" /> optimization, and curated local gems.
-                </p>
+            <div className="absolute top-32 right-[15%] animate-float opacity-20">
+                <Plane className="w-8 h-8 text-primary rotate-45" />
+            </div>
+            <div className="absolute bottom-40 left-[10%] animate-float animation-delay-1000 opacity-15">
+                <Globe className="w-10 h-10 text-accent" />
             </div>
 
-            <div className="relative z-10 pb-12 px-4 max-w-7xl mx-auto">
+            <div className="relative z-10 container mx-auto px-4 py-8 md:py-12">
                 <AnimatePresence mode="wait">
                     {isLoading ? (
                         <motion.div
@@ -203,19 +168,19 @@ export default function Home() {
                             exit={{ opacity: 0, scale: 1.05 }}
                             className="flex flex-col items-center justify-center min-h-[80vh]"
                         >
-                            <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl p-12 max-w-md border border-white/40">
+                            <div className="glass p-12 max-w-md rounded-3xl shadow-2xl">
                                 <div className="flex flex-col items-center">
                                     <div className="relative">
-                                        <div className="w-24 h-24 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
-                                        <Plane className="w-10 h-10 text-blue-600 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+                                        <div className="w-24 h-24 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+                                        <Plane className="w-10 h-10 text-primary absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
                                     </div>
-                                    <h2 className="text-3xl font-bold text-gray-800 mt-8 mb-3 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
+                                    <h2 className="text-3xl font-bold text-gray-800 mt-8 mb-3 bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">
                                         Crafting Your Journey
                                     </h2>
-                                    <p className="text-gray-600 text-center font-medium">
+                                    <p className="text-muted-foreground text-center font-medium">
                                         Our AI is designing the perfect travel plan for you...
                                     </p>
-                                    <div className="mt-8 space-y-3 text-sm font-medium text-gray-500 w-full">
+                                    <div className="mt-8 space-y-3 text-sm font-medium text-gray-600 w-full">
                                         <div className="flex items-center gap-3 p-3 bg-white/50 rounded-xl">
                                             <span className="text-xl">✨</span> Analyzing preferences
                                         </div>
@@ -236,25 +201,73 @@ export default function Home() {
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -20 }}
                             transition={{ duration: 0.5 }}
-                            className="flex flex-col items-center justify-center min-h-[85vh]"
                         >
-                            <motion.div
-                                initial={{ y: 40, opacity: 0 }}
-                                animate={{ y: 0, opacity: 1 }}
-                                transition={{ delay: 0.5, type: "spring", stiffness: 100 }}
-                            >
-                                <TripForm onSubmit={handleSubmit} isLoading={isLoading} initialData={initialFormData} />
-                            </motion.div>
+                            {/* Header */}
+                            <header className="text-center mb-10 md:mb-14 animate-fade-in-up">
+                                <div className="inline-flex items-center gap-2 bg-white/90 backdrop-blur-sm text-primary text-sm font-medium px-4 py-2 rounded-full mb-6 shadow-sm">
+                                    <Sparkles className="w-4 h-4" />
+                                    <span>AI-Powered Travel Planning</span>
+                                </div>
+                                <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-4 leading-tight">
+                                    Your Dream Trip,{' '}
+                                    <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                                        Intelligently Planned
+                                    </span>
+                                </h1>
+                                <p className="text-muted-foreground text-lg md:text-xl max-w-2xl mx-auto">
+                                    Let our AI create the perfect itinerary tailored to your preferences,
+                                    budget, and travel style.
+                                </p>
+                            </header>
+
+                            {/* Trust Indicators */}
+                            <div className="flex flex-wrap items-center justify-center gap-6 mb-10 md:mb-14 animate-fade-in-up">
+                                <div className="flex items-center gap-2 text-sm text-gray-700 font-medium">
+                                    <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                                    <span>Designed for real-world travel planning</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-sm text-gray-700 font-medium">
+                                    <Shield className="w-4 h-4 text-green-500" />
+                                    <span>Secure & Private</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-sm text-gray-700 font-medium">
+                                    <Zap className="w-4 h-4 text-accent" />
+                                    <span>Instant Results</span>
+                                </div>
+                            </div>
+
+                            {/* Two Column Layout */}
+                            <div className="grid lg:grid-cols-[45fr_55fr] gap-6 lg:gap-8 max-w-7xl mx-auto items-start">
+                                <div className="order-1 lg:order-1">
+                                    <TravelForm onFormChange={handleFormChange} onSubmit={handleSubmit} />
+                                </div>
+                                <div className="order-2 lg:order-2">
+                                    <TripPreview
+                                        destination={formData.destination}
+                                        month={formData.month}
+                                        days={formData.days}
+                                        currency={formData.currency}
+                                        budget={formData.budget}
+                                        travelType={formData.travelType}
+                                        foodPreference={formData.foodPreference}
+                                    />
+                                </div>
+                            </div>
 
                             {error && (
                                 <motion.div
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
-                                    className="mt-6 p-4 bg-red-100/90 backdrop-blur-md border border-red-400 text-red-800 rounded-xl max-w-2xl font-medium shadow-lg"
+                                    className="mt-6 p-4 bg-red-100/90 backdrop-blur-md border border-red-400 text-red-800 rounded-xl max-w-2xl mx-auto font-medium shadow-lg"
                                 >
                                     {error}
                                 </motion.div>
                             )}
+
+                            {/* Footer */}
+                            <footer className="text-center mt-14 md:mt-20 pb-8">
+                                <p className="text-sm text-muted-foreground">© 2026 Smart Travel Planner • Demo Project</p>
+                            </footer>
                         </motion.div>
                     ) : (
                         <motion.div

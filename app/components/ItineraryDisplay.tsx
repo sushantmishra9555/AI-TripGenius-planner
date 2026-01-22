@@ -1,9 +1,11 @@
 'use client';
 
 import { MapPin, Utensils, Clock, Route, Lightbulb, Calendar, ArrowRight, Navigation, Download, Share2, Heart } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { formatDistance, formatTravelTime, calculateDistance } from '../utils/distance';
 import RouteMap from './RouteMap';
+import HotelRecommendations from './HotelRecommendations';
+import type { Hotel } from '../types/trip';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
@@ -39,7 +41,8 @@ interface ItineraryData {
     lat: number;
     lon: number;
   };
-  [key: string]: DayItinerary | SeasonalWarning | { lat: number; lon: number } | undefined;
+  hotels?: Hotel[];
+  [key: string]: DayItinerary | SeasonalWarning | { lat: number; lon: number } | Hotel[] | undefined;
 }
 
 interface ItineraryDisplayProps {
@@ -410,6 +413,14 @@ export default function ItineraryDisplay({ jsonData, onReset, tripParams }: Itin
           startLon={itinerary.hotel_coordinates?.lon}
         />
       </div>
+
+      {/* Hotel Recommendations */}
+      {itinerary.hotels && (
+        <HotelRecommendations
+          hotels={itinerary.hotels}
+          destination={tripParams?.destination || 'your destination'}
+        />
+      )}
 
 
       {/* Day Cards - Zomato/MakeMyTrip Style */}
