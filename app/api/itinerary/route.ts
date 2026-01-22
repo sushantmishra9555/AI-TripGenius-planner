@@ -159,10 +159,19 @@ export async function POST(req: Request) {
         });
 
     } catch (error) {
-        console.error('API Error:', error);
+        console.error('❌ API Error:', error);
+
+        // Log deep error details
+        const errorMessage = error instanceof Error ? error.message : String(error);
+
         return NextResponse.json(
-            { error: 'Failed to generate itinerary' },
+            {
+                error: 'Failed to generate itinerary',
+                details: errorMessage,
+                stack: error instanceof Error ? error.stack : undefined
+            },
             { status: 500 }
         );
     }
 }
+

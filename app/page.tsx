@@ -104,7 +104,7 @@ export default function Home() {
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to generate itinerary');
+                throw new Error(errorData.details || errorData.error || 'Failed to generate itinerary');
             }
 
             const responseData = await response.json();
