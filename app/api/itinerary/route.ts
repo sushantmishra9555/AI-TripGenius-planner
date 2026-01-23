@@ -2,40 +2,45 @@ import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
 const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env.OPENAI_API_KEY,
+  baseURL: 'https://openrouter.ai/api/v1',
+  defaultHeaders: {
+    'HTTP-Referer': 'https://tripgenius.app', // Optional: helps OpenRouter track your app
+    'X-Title': 'TripGenius AI Planner', // Optional: shows in OpenRouter dashboard
+  }
 });
 
 function generatePrompt(
-    destination: string,
-    days: number,
-    budget: number,
-    style: string,
-    hotel: string,
-    constraints?: any,
-    month?: string
+  destination: string,
+  days: number,
+  budget: number,
+  style: string,
+  hotel: string,
+  constraints?: any,
+  month?: string
 ): string {
-    // Build smart constraints text
-    let smartRules = '';
+  // Build smart constraints text
+  let smartRules = '';
 
-    if (constraints) {
-        if (constraints.budgetLevel === 'budget') {
-            smartRules += '\n- BUDGET LOW: Prioritize FREE activities, local markets, and nature spots.';
-        } else if (constraints.budgetLevel === 'premium') {
-            smartRules += '\n- PREMIUM MODE: Include luxury dining and exclusive experiences.';
-        }
-
-        if (constraints.distanceLimit) {
-            smartRules += '\n- SHORT TRIP: Skip far places. Keep all locations central to save travel time.\n- Max travel between spots: 20 mins.';
-        }
-
-        if (constraints.walkingIntensity === 'low') {
-            smartRules += '\n- FAMILY MODE: Reduce walking usage. Suggest places with easy access and seating.\n- Kid-friendly content.';
-        } else if (constraints.walkingIntensity === 'high') {
-            smartRules += '\n- BACKPACKER MODE: High walking intensity allowed.';
-        }
+  if (constraints) {
+    if (constraints.budgetLevel === 'budget') {
+      smartRules += '\n- BUDGET LOW: Prioritize FREE activities, local markets, and nature spots.';
+    } else if (constraints.budgetLevel === 'premium') {
+      smartRules += '\n- PREMIUM MODE: Include luxury dining and exclusive experiences.';
     }
 
-    return `
+    if (constraints.distanceLimit) {
+      smartRules += '\n- SHORT TRIP: Skip far places. Keep all locations central to save travel time.\n- Max travel between spots: 20 mins.';
+    }
+
+    if (constraints.walkingIntensity === 'low') {
+      smartRules += '\n- FAMILY MODE: Reduce walking usage. Suggest places with easy access and seating.\n- Kid-friendly content.';
+    } else if (constraints.walkingIntensity === 'high') {
+      smartRules += '\n- BACKPACKER MODE: High walking intensity allowed.';
+    }
+  }
+
+  return `
 You are a professional travel planner.
 
 Create a realistic ${days}-day itinerary for ${destination}.
@@ -125,53 +130,53 @@ IMPORTANT: Include 3-5 hotel recommendations based on the budget level.
 }
 
 export async function POST(req: Request) {
-    try {
-        const body = await req.json();
-        const { destination, days, budget, style, hotel, constraints, month } = body;
+  try {
+    const body = await req.json();
+    const { destination, days, budget, style, hotel, constraints, month } = body;
 
-        // Validate required fields
-        if (!destination || !days || !budget || !style || !hotel) {
-            return NextResponse.json(
-                { error: 'Missing required fields' },
-                { status: 400 }
-            );
-        }
-
-        if (!process.env.OPENAI_API_KEY) {
-            return NextResponse.json(
-                { error: 'OpenAI API key missing' },
-                { status: 500 }
-            );
-        }
-
-        const prompt = generatePrompt(destination, days, budget, style, hotel, constraints, month);
-
-        const response = await openai.chat.completions.create({
-            model: 'gpt-4o-mini',
-            messages: [{ role: 'user', content: prompt }],
-            temperature: 0.7,
-            response_format: { type: "json_object" }
-        });
-
-        // Return the JSON directly (frontend parses it)
-        return NextResponse.json({
-            itinerary: response.choices[0].message.content,
-        });
-
-    } catch (error) {
-        console.error('❌ API Error:', error);
-
-        // Log deep error details
-        const errorMessage = error instanceof Error ? error.message : String(error);
-
-        return NextResponse.json(
-            {
-                error: 'Failed to generate itinerary',
-                details: errorMessage,
-                stack: error instanceof Error ? error.stack : undefined
-            },
-            { status: 500 }
-        );
+    // Validate required fields
+    if (!destination || !days || !budget || !style || !hotel) {
+      return NextResponse.json(
+        { error: 'Missing required fields' },
+        { status: 400 }
+      );
     }
+
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json(
+        { error: 'OpenAI API key missing' },
+        { status: 500 }
+      );
+    }
+
+    const prompt = generatePrompt(destination, days, budget, style, hotel, constraints, month);
+
+    const response = await openai.chat.completions.create({
+      model: 'openai/gpt-3.5-turbo', // Very affordable on OpenRouter (~$0.002/1K tokens)
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.7,
+      response_format: { type: "json_object" }
+    });
+
+    // Return the JSON directly (frontend parses it)
+    return NextResponse.json({
+      itinerary: response.choices[0].message.content,
+    });
+
+  } catch (error) {
+    console.error('❌ API Error:', error);
+
+    // Log deep error details
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    return NextResponse.json(
+      {
+        error: 'Failed to generate itinerary',
+        details: errorMessage,
+        stack: error instanceof Error ? error.stack : undefined
+      },
+      { status: 500 }
+    );
+  }
 }
 
